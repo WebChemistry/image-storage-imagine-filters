@@ -1,0 +1,21 @@
+language: php
+php:
+    - 7.4
+
+install:
+    - travis_retry composer install --no-interaction --no-suggest --no-progress --prefer-dist
+
+cache:
+    directories:
+        - $HOME/.composer/cache
+
+jobs:
+    include:
+        - stage: Coding Standard
+          script: composer run-script cs
+
+        - stage: Tests
+          script: composer run-script tests
+
+        - stage: Static Analysis
+          script: composer run-script phpstan
