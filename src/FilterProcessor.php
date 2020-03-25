@@ -11,7 +11,6 @@ use RuntimeException;
 use WebChemistry\ImageStorage\Exceptions\InvalidArgumentException;
 use WebChemistry\ImageStorage\Filter\FilterProcessorInterface;
 use WebChemistry\ImageStorage\Metadata\ImageMetadataInterface;
-use WebChemistry\ImageStorage\Metadata\LocalImageSource;
 
 final class FilterProcessor implements FilterProcessorInterface
 {
@@ -46,7 +45,7 @@ final class FilterProcessor implements FilterProcessorInterface
 	/**
 	 * @param mixed[] $options
 	 */
-	public function process(ImageMetadataInterface $metadata, ?string $savePath = null, array $options = []): ?string
+	public function process(ImageMetadataInterface $metadata, array $options = []): string
 	{
 		$resource = $metadata->getImage();
 		$filter = $resource->getFilter();
@@ -58,31 +57,12 @@ final class FilterProcessor implements FilterProcessorInterface
 
 		$this->loader->load($filter, $resource->getScope(), $image);
 
-		if ($savePath) {
-			$image->save($savePath);
-
-			return null;
-		}
-
 		return $image->get($metadata->getMimeType()->toSuffix());
 	}
 
 	private function createImageInstance(ImageMetadataInterface $metadata): ImageInterface
 	{
-		$source = $metadata->getSource();
-		if (!$source instanceof LocalImageSource) {
-			throw new InvalidArgumentException(sprintf('Only %s source supported', LocalImageSource::class));
-		}
-
-		if ($path = $source->getPath()) {
-			$image = $this->imagine->open($path);
-		} elseif ($content = $source->getContent()) {
-			$image = $this->imagine->load($content);
-		} else {
-			throw new InvalidArgumentException('Source of image metadata is invalid');
-		}
-
-		return $image;
+		return $this->imagine->load($metadata->getContent());
 	}
 
 }
