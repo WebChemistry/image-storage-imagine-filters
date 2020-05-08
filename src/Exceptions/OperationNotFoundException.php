@@ -4,7 +4,7 @@ namespace WebChemistry\ImageStorage\ImagineFilters\Exceptions;
 
 use Exception;
 
-class FilterNotFoundException extends Exception
+class OperationNotFoundException extends Exception
 {
 
 }

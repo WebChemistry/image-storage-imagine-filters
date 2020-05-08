@@ -8,21 +8,21 @@ use Imagine\Image\ImageInterface;
 use Imagine\Image\ImagineInterface;
 use Imagine\Imagick\Imagine;
 use RuntimeException;
-use WebChemistry\ImageStorage\Exceptions\InvalidArgumentException;
+use WebChemistry\ImageStorage\File\FileInterface;
 use WebChemistry\ImageStorage\Filter\FilterProcessorInterface;
-use WebChemistry\ImageStorage\Metadata\ImageMetadataInterface;
+use WebChemistry\ImageStorage\ImagineFilters\Exceptions\OperationNotFoundException;
 
 final class FilterProcessor implements FilterProcessorInterface
 {
 
 	private ImagineInterface $imagine;
 
-	private FilterLoaderInterface $loader;
+	private OperationRegistryInterface $operationRegistry;
 
-	public function __construct(FilterLoaderInterface $loader, ?ImagineInterface $imagine = null)
+	public function __construct(OperationRegistryInterface $operationRegistry, ?ImagineInterface $imagine = null)
 	{
 		$this->imagine = $imagine ?? $this->createImagine();
-		$this->loader = $loader;
+		$this->operationRegistry = $operationRegistry;
 	}
 
 	protected function createImagine(): ImagineInterface
@@ -31,12 +31,12 @@ final class FilterProcessor implements FilterProcessorInterface
 			return new Imagine();
 		}
 
-		if (extension_loaded('gmagick')) {
-			return new GmagickImagine();
-		}
-
 		if (extension_loaded('gd')) {
 			return new GdImagine();
+		}
+
+		if (extension_loaded('gmagick')) {
+			return new GmagickImagine();
 		}
 
 		throw new RuntimeException('PHP extension not found, need imagick or gd or gmagick');
@@ -45,24 +45,27 @@ final class FilterProcessor implements FilterProcessorInterface
 	/**
 	 * @param mixed[] $options
 	 */
-	public function process(ImageMetadataInterface $metadata, array $options = []): string
+	public function process(FileInterface $target, FileInterface $source, array $options = []): string
 	{
-		$resource = $metadata->getImage();
-		$filter = $resource->getFilter();
+		$filter = $target->getImage()->getFilter();
 		if (!$filter) {
-			throw new InvalidArgumentException(sprintf('Image "%s" does not have filter', $resource->getId()));
+			return $target->getContent();
 		}
 
-		$image = $this->createImageInstance($metadata);
+		$operation = $this->operationRegistry->get($filter, $target->getImage()->getScope());
 
-		$this->loader->load($filter, $resource->getScope(), $image);
+		if (!$operation) {
+			throw new OperationNotFoundException(sprintf('Operation not found for %s', $target->getImage()->getId()));
+		}
 
-		return $image->get($metadata->getMimeType()->toSuffix());
+		$operation->operate($image = $this->createImageInstance($source), $filter);
+
+		return $image->get($source->getMimeType()->toSuffix());
 	}
 
-	private function createImageInstance(ImageMetadataInterface $metadata): ImageInterface
+	private function createImageInstance(FileInterface $file): ImageInterface
 	{
-		return $this->imagine->load($metadata->getContent());
+		return $this->imagine->load($file->getContent());
 	}
 
 }

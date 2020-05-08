@@ -5,7 +5,7 @@
     "type": "library",
     "require": {
         "php": ">=7.4",
-        "webchemistry/image-storage": ">= 0.10.0 <1.0.0",
+        "webchemistry/image-storage": ">= 0.11.3 <1.0.0",
         "imagine/imagine": "^1.2"
     },
     "require-dev": {
@@ -15,7 +15,8 @@
         "phpstan/extension-installer": "^1.0",
         "phpstan/phpstan-deprecation-rules": "^0.12.2",
         "warengo/qa": "2.0.1",
-        "codeception/module-phpbrowser": "^1.0.0"
+        "codeception/module-phpbrowser": "^1.0.0",
+        "symfony/filesystem": "^5.0"
     },
     "autoload": {
         "psr-4": {

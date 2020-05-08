@@ -2,13 +2,15 @@
 
 namespace Project\Tests;
 
-use WebChemistry\ImageStorage\Entity\Image;
-use WebChemistry\ImageStorage\ImagineFilters\FilterLoader;
+use WebChemistry\ImageStorage\Entity\StorableImage;
+use WebChemistry\ImageStorage\File\FileFactory;
+use WebChemistry\ImageStorage\Filesystem\LocalFilesystem;
 use WebChemistry\ImageStorage\ImagineFilters\FilterProcessor;
+use WebChemistry\ImageStorage\ImagineFilters\OperationRegistry;
 use WebChemistry\ImageStorage\ImagineFilters\Testing\FileTestCase;
-use WebChemistry\ImageStorage\ImagineFilters\Testing\Filter\ThumbnailFilter;
-use WebChemistry\ImageStorage\Metadata\ImageMetadata;
-use WebChemistry\ImageStorage\Metadata\LocalImageSource;
+use WebChemistry\ImageStorage\ImagineFilters\Testing\Filter\ThumbnailOperation;
+use WebChemistry\ImageStorage\PathInfo\Factory\PathInfoFactory;
+use WebChemistry\ImageStorage\Uploader\FilePathUploader;
 
 class FilterTest extends FileTestCase
 {
@@ -19,46 +21,29 @@ class FilterTest extends FileTestCase
 	{
 		parent::_before();
 
-		$loader = new FilterLoader();
-		$loader->addFilter(new ThumbnailFilter());
-		$this->processor = new FilterProcessor($loader);
+		$registry = new OperationRegistry();
+		$registry->add(new ThumbnailOperation());
+		$this->processor = new FilterProcessor($registry);
 	}
 
-	public function testFilterWithSave(): void
+	public function testFilter(): void
 	{
-		$image = new class('name.jpg') extends Image {
-
-		};
+		$image = new StorableImage(
+			new FilePathUploader($this->imageJpg),
+			'name.jpg'
+		);
 		$image = $image->withFilter('thumbnail');
 
-		$this->processor->process(
-			new ImageMetadata($image, new LocalImageSource($this->imageJpg)),
-			$this->getAbsolutePath('name.jpg')
+		$fileFactory = new FileFactory(new LocalFilesystem($this->getAbsolutePath()), new PathInfoFactory());
+
+		$content = $this->processor->process(
+			$fileFactory->create($image),
+			$fileFactory->create($image->getOriginal())
 		);
 
-		$this->assertTempFileExists('name.jpg');
-		$size = getimagesize($this->getAbsolutePath('name.jpg'));
+		$size = getimagesizefromstring($content);
 		$this->assertSame(15, $size[0], 'width is not same');
 		$this->assertSame(15, $size[1], 'height is not same');
-	}
-
-	public function testFilterWithString(): void
-	{
-		$image = new class('name.jpg') extends Image {
-
-		};
-		$image = $image->withFilter('thumbnail');
-
-		$this->processor->process(
-			new ImageMetadata($image, new LocalImageSource($this->imageJpg)),
-			$this->getAbsolutePath('name2.jpg')
-		);
-
-		$this->assertTempFileExists('name2.jpg');
-
-		$string = $this->processor->process(new ImageMetadata($image, new LocalImageSource($this->imageJpg)));
-
-		$this->assertSame($string, file_get_contents($this->getAbsolutePath('name2.jpg')));
 	}
 
 }
